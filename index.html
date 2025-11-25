@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Days Countdown</title>
-    <!-- Tailwind CSS for modern, responsive styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS for modern, responsive styling --><script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom styles for the canvas container */
         .canvas-container {
@@ -30,14 +29,13 @@
         <h1 class="text-4xl sm:text-5xl font-extrabold text-blue-900 mb-2">
             Countdown to Freedom!
         </h1>
-        <p class="text-gray-600 text-lg mb-6">Days of School Remaining</p>
+        <p id="subtitle" class="text-gray-600 text-lg mb-6">Days of School Remaining</p>
         <div id="countdown" class="text-6xl sm:text-8xl font-black text-white p-6 rounded-xl bg-blue-600 shadow-xl transition duration-300">
             Calculating...
         </div>
     </div>
 
-    <!-- Canvas Container for the Iceberg Visualization -->
-    <div class="canvas-container shadow-2xl">
+    <!-- Canvas Container for the Iceberg Visualization --><div class="canvas-container shadow-2xl">
         <canvas id="icebergCanvas"></canvas>
     </div>
 
@@ -65,7 +63,6 @@
             }
 
             // 2. Check Holiday Break (Dec 20, 2025 up to Jan 5, 2026, inclusive)
-            // Note: BREAK_END_EXCLUSIVE is Jan 6th, so < BREAK_END_EXCLUSIVE means up to Jan 5th 23:59:59.
             if (date >= BREAK_START && date < BREAK_END_EXCLUSIVE) {
                 return false;
             }
@@ -74,37 +71,36 @@
         }
 
         /**
-         * Calculates the number of remaining school days.
-         * The count is based on how many school days have passed since the START_DATE.
-         * Day 40 remaining is on Nov 25th.
+         * Calculates the number of remaining school days up to a given date.
+         * @param {Date} simulatedDate - The date to calculate up to (defaults to today).
          */
-        function calculateDaysRemaining() {
-            const today = new Date();
+        function calculateDaysRemaining(simulatedDate = new Date()) {
+            const checkDate = new Date(simulatedDate);
             // Reset time to midnight for accurate day comparison
-            today.setHours(0, 0, 0, 0);
+            checkDate.setHours(0, 0, 0, 0);
 
-            // If today is before the start date, the full count remains
-            if (today < START_DATE) {
+            // If the date is before the start date, the full count remains
+            if (checkDate < START_DATE) {
                 return MAX_SCHOOL_DAYS;
             }
 
-            let daysBeforeToday = 0;
+            let daysBeforeTarget = 0;
             let currentDate = new Date(START_DATE);
 
-            // Iterate through every day from START_DATE up to (but not including) today
-            while (currentDate < today) {
+            // Iterate through every day from START_DATE up to (but not including) the target date
+            while (currentDate < checkDate) {
                 if (isSchoolDay(currentDate)) {
-                    daysBeforeToday++;
+                    daysBeforeTarget++;
                 }
                 currentDate.setDate(currentDate.getDate() + 1);
             }
 
             // Days remaining = Total count - Days elapsed
-            const daysRemaining = Math.max(0, MAX_SCHOOL_DAYS - daysBeforeToday);
+            const daysRemaining = Math.max(0, MAX_SCHOOL_DAYS - daysBeforeTarget);
             
             // Check for the absolute end date (Feb 13, 2026 is the 40th school day)
             const FINAL_DAY = new Date('2026-02-13T00:00:00');
-            if (today > FINAL_DAY && daysRemaining > 0) {
+            if (checkDate > FINAL_DAY && daysRemaining > 0) {
                  return 0; // Ensure count is 0 if we're past the end
             }
 
@@ -112,8 +108,7 @@
         }
 
         /**
-         * Draws the dynamic iceberg visualization on the canvas.
-         * The iceberg rises and gets chipped away based on the countdown progress.
+         * Draws the dynamic iceberg visualization on the canvas (Reverted to simple triangular shape with shadows).
          * @param {number} daysRemaining - The current number of school days left (0 to 40).
          */
         function drawIceberg(daysRemaining) {
@@ -146,47 +141,51 @@
             ctx.fillRect(0, waterLevel, W, H - waterLevel);
 
 
-            // --- 2. Define Iceberg Points (Dynamic Chipping/Rising) ---
+            // --- 2. Define Iceberg Points (Triangular and Dynamic) ---
 
             // Submerged base points (Shift down as iceberg rises)
             const p1 = { x: centerX - scale * 0.4, y: waterLevel + scale * 0.4 + verticalShift };
             const p2 = { x: centerX + scale * 0.4, y: waterLevel + scale * 0.5 + verticalShift };
             const p3 = { x: centerX, y: H }; // Absolute bottom point
 
-            // Top-of-water points
-            const p7 = { x: centerX - scale * 0.15, y: waterLevel }; // Water line left
-            const p8 = { x: centerX + scale * 0.15, y: waterLevel }; // Water line right
+            // Waterline connection points (used for submerged part)
+            const p7 = { x: centerX - scale * 0.15, y: waterLevel };
+            const p8 = { x: centerX + scale * 0.15, y: waterLevel };
 
-            // Dynamic Top points (Chipped away/lowered based on progress)
-            const basePeakY = waterLevel - scale * 0.7; // Initial highest point
+            // --- Visible Part Points (More Triangular Shape) ---
+            const basePeakY = waterLevel - scale * 0.8; // Higher peak
 
-            // Peak (P4) - Gets lower and shifts right slightly
+            // Peak (P4) - Stays centered, gets lower as days pass
             const p4 = {
-                x: centerX + scale * 0.05 * progress,
-                y: basePeakY + (waterLevel - scale * 0.1 - basePeakY) * progress * 0.8 // Aggressive vertical chipping
+                x: centerX,
+                y: basePeakY + (waterLevel - scale * 0.2 - basePeakY) * progress // Vertical chipping
             };
 
-            // Right Shoulder (P5) - Gets less prominent/lower
-            const p5_startX = centerX + scale * 0.25;
-            const p5_endX = centerX + scale * 0.0;
-            const p5_startY = waterLevel - scale * 0.5;
-            const p5_endY = waterLevel - scale * 0.15;
-            const p5 = {
-                x: p5_startX + (p5_endX - p5_startX) * progress * 0.7,
-                y: p5_startY + (p5_endY - p5_startY) * progress * 0.8
-            };
-
-            // Left Shoulder (P6) - Gets drastically chipped/lower/asymmetrical
-            const p6_startX = centerX - scale * 0.3;
-            const p6_endX = centerX + scale * 0.0;
-            const p6_startY = waterLevel - scale * 0.6;
-            const p6_endY = waterLevel - scale * 0.2;
+            // Visible Base Width (Base of the triangle above water)
+            const visibleBaseWidth = scale * 0.4; 
+            
+            // Left Shoulder (P6) - Forms the left corner of the triangle base
             const p6 = {
-                x: p6_startX + (p6_endX - p6_startX) * progress * 0.9, // Shifts right/inward aggressively
-                y: p6_startY + (p6_endY - p6_startY) * progress * 0.9 // Gets low aggressively
+                x: centerX - visibleBaseWidth / 2 + (scale * 0.05 * progress), // Moves slightly inward
+                y: waterLevel
             };
 
-            // --- 3. Draw Iceberg Submerged Part ---
+            // Right Shoulder (P5) - Forms the right corner of the triangle base
+            const p5 = {
+                x: centerX + visibleBaseWidth / 2 - (scale * 0.05 * progress), // Moves slightly inward
+                y: waterLevel
+            };
+
+
+            // --- 3. Draw Iceberg Submerged Part (with shadow) ---
+            
+            // Shadow for the submerged portion (gives it a floating/3D lift effect)
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetX = 0; 
+            ctx.shadowOffsetY = 5; 
+
+
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y); // Underwater base left
             ctx.lineTo(p3.x, p3.y); // Bottom point
@@ -200,18 +199,30 @@
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // --- 4. Draw Iceberg Visible Part (above water) ---
+            // --- 4. Draw Iceberg Visible Part (above water, with shadow) ---
+            
+            // Adjust shadow for the top portion (slight side/down shadow)
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 3;
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+
+
             ctx.beginPath();
-            ctx.moveTo(p7.x, p7.y); // Water line left
-            ctx.lineTo(p6.x, p6.y); // Left chipped point
+            ctx.moveTo(p6.x, p6.y); // Left corner of the new triangular base (Waterline)
             ctx.lineTo(p4.x, p4.y); // Peak
-            ctx.lineTo(p5.x, p5.y); // Right chipped point
-            ctx.lineTo(p8.x, p8.y); // Water line right
+            ctx.lineTo(p5.x, p5.y); // Right corner of the new triangular base (Waterline)
             ctx.closePath();
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // White/light blue for ice
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'; // Brighter white for ice
             ctx.fill();
-            ctx.strokeStyle = '#ccc';
+            ctx.strokeStyle = '#a0aec0'; // Lighter stroke
             ctx.stroke();
+            
+            // Reset shadows after drawing the main element
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+
 
             // --- 5. Draw Water Line Overlay ---
             // This adds a stark separation line between air and water
@@ -224,12 +235,50 @@
         }
 
         /**
+         * Parses the URL hash to check for a simulated date.
+         * @returns {Date | null} The simulated Date object, or null if not found/invalid.
+         */
+        function getRundownDate() {
+            const hash = window.location.hash.substring(1); // Remove '#'
+            const params = new URLSearchParams(hash);
+            const dateStr = params.get('date');
+
+            if (dateStr) {
+                try {
+                    const date = new Date(dateStr);
+                    // Check if the date is valid (e.g., not "Invalid Date")
+                    if (!isNaN(date.getTime())) {
+                        return date;
+                    }
+                } catch (e) {
+                    console.error("Invalid date format in hash:", dateStr);
+                }
+            }
+            return null;
+        }
+
+        /**
          * Main function to run the calculation and drawing.
          */
         function updateDisplay() {
-            const daysRemaining = calculateDaysRemaining();
+            const simulatedDate = getRundownDate();
             
-            // Update the HTML countdown text
+            let daysRemaining;
+            let displayTitle;
+
+            if (simulatedDate) {
+                daysRemaining = calculateDaysRemaining(simulatedDate);
+                // Format the simulated date for display
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                const formattedDate = simulatedDate.toLocaleDateString(undefined, options);
+                displayTitle = `Simulation for ${formattedDate}`;
+            } else {
+                daysRemaining = calculateDaysRemaining(new Date());
+                displayTitle = `Days of School Remaining`;
+            }
+            
+            // Update the HTML text
+            document.getElementById('subtitle').textContent = displayTitle;
             const countdownEl = document.getElementById('countdown');
             countdownEl.textContent = daysRemaining;
             
@@ -257,6 +306,8 @@
         // --- Initialization and Event Listeners ---
         window.addEventListener('DOMContentLoaded', updateDisplay);
         window.addEventListener('resize', updateDisplay);
+        // New: Listen for URL hash changes to run the simulation
+        window.addEventListener('hashchange', updateDisplay);
 
     </script>
 </body>
