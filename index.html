@@ -187,6 +187,7 @@
             const skyProgressColor = '#5f5f7a'; // Lighter Grey Sky/Progress Filled
             const waterColor = '#0a1931';       // Very Dark Ocean Blue
             const moonColor = '#fff9d6';       // Subtle Pale Yellow
+            const waterLineColor = '#051220';  // Very Dark Blue for water line (was neon green)
 
             // Iceberg - Shades of Pink
             const visibleLight = '#FFD1DC'; // Light Pink
@@ -224,11 +225,11 @@
             // Check if the iceberg is completely melted (Day 0)
             if (daysRemaining <= 0) {
                  // Skip drawing the iceberg geometry, only the water line remains
-                 // Neon Green Water Line
+                 // Water Line (now dark blue)
                 ctx.beginPath();
                 ctx.moveTo(0, waterLevelY);
                 ctx.lineTo(W, waterLevelY);
-                ctx.strokeStyle = '#34D399'; // Neon Green
+                ctx.strokeStyle = waterLineColor; // Dark blue
                 ctx.lineWidth = 4;
                 ctx.stroke();
                 // Apply film grain even if no iceberg
@@ -432,11 +433,11 @@
 
 
             // --- 5. Draw Water Line Overlay (Last to ensure it's on top) ---
-            // Crisp Neon Green line
+            // Dark blue line (was neon green)
             ctx.beginPath();
             ctx.moveTo(0, waterLevelY);
             ctx.lineTo(W, waterLevelY);
-            ctx.strokeStyle = '#34D399'; // Neon Green
+            ctx.strokeStyle = waterLineColor; // Dark blue for the water line
             ctx.lineWidth = 4;
             ctx.stroke();
 
