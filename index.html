@@ -107,7 +107,7 @@
         }
 
         /**
-         * Draws a sliver moon in the upper right corner, using clipping to ensure a crisp edge.
+         * Draws a sliver moon in the upper right corner, using a corrected path.
          * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
          * @param {number} W - Canvas width.
          * @param {string} color - Color of the moon.
@@ -119,35 +119,12 @@
 
             ctx.fillStyle = color;
             ctx.beginPath();
-            
-            // 1. Draw the full circle that defines the outer edge of the moon
-            ctx.arc(moonCenterX, moonCenterY, moonRadius, 0, Math.PI * 2, false);
-            
-            // 2. Set the clipping path to this outer circle
-            ctx.save(); // Save the canvas state before clipping
-            ctx.clip(); 
-            
-            // 3. Draw the inner circle (the 'bite')
-            // This inner circle will only be visible where it overlaps with the outer circle, 
-            // but since it's the same color as the sky, it essentially erases that portion.
-            
-            // Draw a circle slightly smaller than the outer radius, offset to create the crescent
-            // Since we clip, we can simply fill the canvas with the sky color, and only the 
-            // part NOT overlapped by the second shape will remain in the clipping area.
-            
-            // Instead of clipping and filling, let's just use the shape drawing method correctly
-            // to ensure anti-aliasing doesn't create artifacts.
-            
-            // Correct Crescent Drawing (Using two intersecting arcs in a single path)
-            ctx.beginPath();
-            // Outer edge (starting from the top)
+            // Outer arc of the moon (from top, clockwise to bottom)
             ctx.arc(moonCenterX, moonCenterY, moonRadius, Math.PI * 0.5, Math.PI * 1.5, true); 
-            // Inner edge (convex curve)
+            // Inner arc to create the crescent shape (convex curve, from bottom, counter-clockwise to top)
             ctx.arc(moonCenterX - moonRadius * 0.4, moonCenterY, moonRadius * 0.9, Math.PI * 1.5, Math.PI * 0.5, false);
             ctx.closePath();
             ctx.fill();
-            
-            ctx.restore(); // Restore the canvas state (removes the clipping path)
         }
 
 
@@ -268,15 +245,15 @@
                 {x: (-0.3 * MAX_BASE_SCALE) * sizeFactor, y: (-0.3 * MAX_BASE_SCALE + verticalLift) * sizeFactor}, // P6: Far left middle
             ];
 
-            // Submerged Part Points (Symmetrically shrinking and rising)
+            // Submerged Part Points (Wider base, narrowing upwards)
             const submergedPoints = [
                 {x: (-0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0 * MAX_BASE_SCALE) * sizeFactor}, // P0: Left waterline
                 {x: (0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0 * MAX_BASE_SCALE) * sizeFactor}, // P1: Right waterline
-                {x: (0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0.3 * MAX_BASE_SCALE + verticalLift * 0.5) * sizeFactor}, 
-                {x: (0.15 * MAX_BASE_SCALE) * sizeFactor, y: (0.6 * MAX_BASE_SCALE + verticalLift * 0.2) * sizeFactor}, 
-                {x: (0 * MAX_BASE_SCALE) * sizeFactor, y: (0.8 * MAX_BASE_SCALE + verticalLift * 0.1) * sizeFactor}, 
-                {x: (-0.15 * MAX_BASE_SCALE) * sizeFactor, y: (0.6 * MAX_BASE_SCALE + verticalLift * 0.2) * sizeFactor}, 
-                {x: (-0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0.3 * MAX_BASE_SCALE + verticalLift * 0.5) * sizeFactor}, 
+                {x: (0.40 * MAX_BASE_SCALE) * sizeFactor, y: (0.3 * MAX_BASE_SCALE + verticalLift * 0.5) * sizeFactor}, // Wider out
+                {x: (0.20 * MAX_BASE_SCALE) * sizeFactor, y: (0.7 * MAX_BASE_SCALE + verticalLift * 0.1) * sizeFactor}, // Even wider base
+                {x: (0 * MAX_BASE_SCALE) * sizeFactor, y: (0.9 * MAX_BASE_SCALE + verticalLift * 0.05) * sizeFactor}, // Bottom center
+                {x: (-0.20 * MAX_BASE_SCALE) * sizeFactor, y: (0.7 * MAX_BASE_SCALE + verticalLift * 0.1) * sizeFactor}, // Even wider base
+                {x: (-0.40 * MAX_BASE_SCALE) * sizeFactor, y: (0.3 * MAX_BASE_SCALE + verticalLift * 0.5) * sizeFactor}, // Wider out
             ];
 
             // Helper to offset points to canvas coordinates
