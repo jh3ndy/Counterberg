@@ -12,8 +12,8 @@
             width: 90%;
             margin: 0 auto;
             border-radius: 1rem;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-            background-color: #f7fafc; /* Tailwind gray-50 */
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5); /* Stronger shadow for dark mode */
+            background-color: #262626; /* Darker background for the card */
             overflow: hidden;
         }
         #icebergCanvas {
@@ -23,19 +23,24 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+<!-- Use dark grey background for the body -->
+<body class="bg-neutral-900 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
 
     <div class="text-center mb-10 w-full max-w-xl">
-        <h1 class="text-4xl sm:text-5xl font-extrabold text-blue-900 mb-2">
+        <!-- Neon Green Title -->
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-green-400 mb-2">
             Countdown to Freedom!
         </h1>
-        <p id="subtitle" class="text-gray-600 text-lg mb-6">Days of School Remaining</p>
-        <div id="countdown" class="text-6xl sm:text-8xl font-black text-white p-6 rounded-xl bg-blue-600 shadow-xl transition duration-300">
+        <!-- Light Grey Subtitle -->
+        <p id="subtitle" class="text-neutral-400 text-lg mb-6">Days of School Remaining</p>
+        <!-- Neon Green Counter Box -->
+        <div id="countdown" class="text-6xl sm:text-8xl font-black text-neutral-900 p-6 rounded-xl bg-green-500 shadow-xl transition duration-300">
             Calculating...
         </div>
     </div>
 
-    <!-- Canvas Container for the Iceberg Visualization --><div class="canvas-container shadow-2xl">
+    <!-- Canvas Container for the Iceberg Visualization -->
+    <div class="canvas-container shadow-2xl">
         <canvas id="icebergCanvas"></canvas>
     </div>
 
@@ -134,36 +139,58 @@
             const verticalLift = MAX_BASE_SCALE * 0.2 * progress; 
             
             // Chipping: Introduce non-symmetrical, fixed variance based on remaining days.
-            // This ensures the peak shifts slightly each day but is stable throughout the day.
             const shapingSeed = Math.sin(daysRemaining * 1.5 + daysRemaining / 5) * 0.5 + 0.5; // Predictable pseudo-random (0 to 1)
             const chippingVariance = MAX_BASE_SCALE * 0.1 * progress; // Max variance increases as it melts
 
-            // --- 1. Draw Water and Sky ---
-            // Sky
-            ctx.fillStyle = '#87ceeb';
+            // --- New Color Palette for Dark Theme (Shades of Pink and Dark Water) ---
+            const skyBgColor = '#36364a';      // Dark Grey Sky/Progress Empty
+            const skyProgressColor = '#5f5f7a'; // Lighter Grey Sky/Progress Filled
+            const waterColor = '#0a1931';       // Very Dark Ocean Blue
+
+            // Iceberg - Shades of Pink
+            const visibleLight = '#FFD1DC'; // Light Pink
+            const visibleMid = '#FFB6C1';   // Medium Pink
+            const visibleDark = '#FF69B4';   // Dark Pink/Rose
+            const textureCreviceColor = '#C799A5'; // Muted Pink/Red
+            const textureHighlightColor = '#FCE4EC'; // Bright Light Pink
+            
+            // Submerged - Darker, Muted Colors
+            const submergedDarkBlue = '#0d2d4f'; 
+            const submergedLightBlue = '#1a4f7e';
+            const submergedHighlightBlue = '#2b6f9e';
+
+
+            // --- 1. Draw Water and Sky (Now a Progress Bar) ---
+            
+            // Sky Background (Progress Empty - Dark Grey)
+            ctx.fillStyle = skyBgColor;
             ctx.fillRect(0, 0, W, waterLevelY);
+            
+            // Sky Progress Bar (Lighter Grey, fills based on progress)
+            const progressWidth = W * progress;
+            ctx.fillStyle = skyProgressColor;
+            ctx.fillRect(0, 0, progressWidth, waterLevelY);
+
 
             // Water (Deep Ocean)
-            ctx.fillStyle = '#106dae';
+            ctx.fillStyle = waterColor;
             ctx.fillRect(0, waterLevelY, W, H - waterLevelY);
             
             // Check if the iceberg is completely melted (Day 0)
             if (daysRemaining <= 0) {
                  // Skip drawing the iceberg geometry, only the water line remains
-                 // Crisp white line
+                 // Neon Green Water Line
                 ctx.beginPath();
                 ctx.moveTo(0, waterLevelY);
                 ctx.lineTo(W, waterLevelY);
-                ctx.strokeStyle = '#ffffff'; 
+                ctx.strokeStyle = '#34D399'; // Neon Green
                 ctx.lineWidth = 4;
                 ctx.stroke();
                 return; 
             }
 
 
-            // --- 2. Define Iceberg Points (Relative to centerX, waterLevelY, and MAX_BASE_SCALE) ---
-            
-            // All coordinates are multiplied by sizeFactor for smooth, proportional shrinking.
+            // --- 2. Define Iceberg Points (Shrinking/Chipping Logic) ---
             
             // Internal Texture Points (T1-T4)
             const T1 = {
@@ -192,7 +219,7 @@
                 {x: (0.1 * MAX_BASE_SCALE) * sizeFactor, y: (-0.7 * MAX_BASE_SCALE + verticalLift - chippingVariance * shapingSeed * 0.8) * sizeFactor}, 
                 
                 {x: (0.3 * MAX_BASE_SCALE) * sizeFactor, y: (-0.3 * MAX_BASE_SCALE + verticalLift) * sizeFactor}, // P3: Far right middle
-                {x: (0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0 * MAX_BASE_SCALE) * sizeFactor}, // P4: Right waterline (WL_R) - Should remain near zero vertical offset if sizeFactor is 0
+                {x: (0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0 * MAX_BASE_SCALE) * sizeFactor}, // P4: Right waterline (WL_R)
                 {x: (-0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0 * MAX_BASE_SCALE) * sizeFactor}, // P5: Left waterline (WL_L)
                 {x: (-0.3 * MAX_BASE_SCALE) * sizeFactor, y: (-0.3 * MAX_BASE_SCALE + verticalLift) * sizeFactor}, // P6: Far left middle
             ];
@@ -225,11 +252,7 @@
             const T_A = internalPts[0]; const T_B = internalPts[1];
             const T_C = internalPts[2]; const T_D = internalPts[3];
 
-            // --- 3. Draw Iceberg Submerged Part ---
-            const submergedDarkBlue = '#1d71b3';
-            const submergedLightBlue = '#2887cc';
-            const submergedHighlightBlue = '#3a9ce6';
-
+            // --- 3. Draw Iceberg Submerged Part (Dark/Muted Blues) ---
             ctx.shadowColor = 'transparent';
             ctx.shadowBlur = 0;
             ctx.shadowOffsetX = 0;
@@ -267,13 +290,7 @@
             ctx.fill();
 
 
-            // --- 4. Draw Iceberg Visible Part (Including New Texture) ---
-            const visibleLight = '#f0f8ff'; 
-            const visibleMid = '#e0f2f7';
-            const visibleDark = '#c7e9f4';
-            const textureCreviceColor = '#D0F0FF'; // Blueish-white for depth
-            const textureHighlightColor = '#FFFFFF'; // Pure white for shine
-
+            // --- 4. Draw Iceberg Visible Part (Shades of Pink) ---
 
             // Main visible shape (largest face - visibleMid base)
             ctx.beginPath();
@@ -306,7 +323,7 @@
             ctx.fillStyle = visibleDark;
             ctx.fill();
 
-            // --- New Texture Facets (Drawn on top for detail) ---
+            // --- New Texture Facets (Pink Details) ---
 
             // 1. Crevice/Shadow on the main face (P1, T_A, T_B)
             ctx.beginPath();
@@ -368,11 +385,11 @@
                 ctx.stroke();
             }
 
-            // Crisp white line (must be last to ensure it's on top)
+            // Crisp Neon Green line (must be last to ensure it's on top)
             ctx.beginPath();
             ctx.moveTo(0, waterLevelY);
             ctx.lineTo(W, waterLevelY);
-            ctx.strokeStyle = '#ffffff'; 
+            ctx.strokeStyle = '#34D399'; // Neon Green
             ctx.lineWidth = 4;
             ctx.stroke();
         }
@@ -425,16 +442,22 @@
             const countdownEl = document.getElementById('countdown');
             countdownEl.textContent = daysRemaining;
             
-            // Adjust color based on remaining days
+            // Adjust color based on remaining days (using dark-mode appropriate alerts)
             if (daysRemaining <= 10) {
-                countdownEl.classList.remove('bg-blue-600', 'bg-yellow-500');
-                countdownEl.classList.add('bg-red-500');
+                countdownEl.classList.remove('bg-green-500', 'bg-yellow-500');
+                countdownEl.classList.add('bg-red-600');
+                countdownEl.classList.remove('text-neutral-900');
+                countdownEl.classList.add('text-white');
             } else if (daysRemaining <= 20) {
-                countdownEl.classList.remove('bg-blue-600', 'bg-red-500');
+                countdownEl.classList.remove('bg-green-500', 'bg-red-600');
                 countdownEl.classList.add('bg-yellow-500');
+                countdownEl.classList.remove('text-white');
+                countdownEl.classList.add('text-neutral-900');
             } else {
-                countdownEl.classList.remove('bg-red-500', 'bg-yellow-500');
-                countdownEl.classList.add('bg-blue-600');
+                countdownEl.classList.remove('bg-red-600', 'bg-yellow-500');
+                countdownEl.classList.add('bg-green-500');
+                countdownEl.classList.remove('text-white');
+                countdownEl.classList.add('text-neutral-900');
             }
 
 
