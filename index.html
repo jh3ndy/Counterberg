@@ -108,7 +108,8 @@
         }
 
         /**
-         * Draws the dynamic iceberg visualization on the canvas (Reverted to simple triangular shape with shadows).
+         * Draws the dynamic iceberg visualization on the canvas.
+         * The iceberg rises and gets chipped away based on the countdown progress.
          * @param {number} daysRemaining - The current number of school days left (0 to 40).
          */
         function drawIceberg(daysRemaining) {
@@ -128,8 +129,8 @@
 
             // Dynamic vertical shift (Iceberg rising out of the water)
             const maxRise = H * 0.15;
-            // The iceberg rises out of the water as progress increases
-            const verticalShift = maxRise * progress * 0.8;
+            // The iceberg rises out of the water as progress increases (Buoyancy effect)
+            const buoyancyShift = maxRise * progress * 0.8;
 
             // --- 1. Draw Water and Sky ---
             // Sky/Air
@@ -143,36 +144,43 @@
 
             // --- 2. Define Iceberg Points (Triangular and Dynamic) ---
 
-            // Submerged base points (Shift down as iceberg rises)
-            const p1 = { x: centerX - scale * 0.4, y: waterLevel + scale * 0.4 + verticalShift };
-            const p2 = { x: centerX + scale * 0.4, y: waterLevel + scale * 0.5 + verticalShift };
-            const p3 = { x: centerX, y: H }; // Absolute bottom point
-
+            // Submerged base points (Bottom rises up as progress increases)
+            const submergedDepth = scale * 0.6;
+            const p1 = { x: centerX - scale * 0.4, y: waterLevel + submergedDepth * 0.7 + buoyancyShift };
+            const p2 = { x: centerX + scale * 0.4, y: waterLevel + submergedDepth * 0.8 + buoyancyShift };
+            
+            // P3 is the absolute bottom point, moves up to simulate shrinking
+            const maxP3Rise = H - (waterLevel + submergedDepth); // Maximum distance P3 can rise
+            const p3 = { x: centerX, y: H - (maxP3Rise * progress) }; 
+            
             // Waterline connection points (used for submerged part)
             const p7 = { x: centerX - scale * 0.15, y: waterLevel };
             const p8 = { x: centerX + scale * 0.15, y: waterLevel };
 
             // --- Visible Part Points (More Triangular Shape) ---
-            const basePeakY = waterLevel - scale * 0.8; // Higher peak
+            const basePeakY = waterLevel - scale * 0.8; // Initial highest point
 
-            // Peak (P4) - Stays centered, gets lower as days pass
+            // Peak (P4) - Stays centered, moves down to simulate chipping/shrinking
             const p4 = {
                 x: centerX,
-                y: basePeakY + (waterLevel - scale * 0.2 - basePeakY) * progress // Vertical chipping
+                // Peak moves down (shrinks) relative to its max height
+                y: basePeakY + (waterLevel - scale * 0.2 - basePeakY) * progress 
             };
 
             // Visible Base Width (Base of the triangle above water)
-            const visibleBaseWidth = scale * 0.4; 
+            const initialVisibleBaseWidth = scale * 0.4; 
             
             // Left Shoulder (P6) - Forms the left corner of the triangle base
             const p6 = {
-                x: centerX - visibleBaseWidth / 2 + (scale * 0.05 * progress), // Moves slightly inward
+                // Moves inward (shrinks in width)
+                x: centerX - initialVisibleBaseWidth / 2 + (scale * 0.15 * progress), 
                 y: waterLevel
             };
 
             // Right Shoulder (P5) - Forms the right corner of the triangle base
             const p5 = {
-                x: centerX + visibleBaseWidth / 2 - (scale * 0.05 * progress), // Moves slightly inward
+                // Moves inward (shrinks in width)
+                x: centerX + initialVisibleBaseWidth / 2 - (scale * 0.15 * progress), 
                 y: waterLevel
             };
 
@@ -188,7 +196,7 @@
 
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y); // Underwater base left
-            ctx.lineTo(p3.x, p3.y); // Bottom point
+            ctx.lineTo(p3.x, p3.y); // Bottom point (Rises)
             ctx.lineTo(p2.x, p2.y); // Underwater base right
             ctx.lineTo(p8.x, p8.y); // Water line right
             ctx.lineTo(p7.x, p7.y); // Water line left
@@ -208,9 +216,9 @@
 
 
             ctx.beginPath();
-            ctx.moveTo(p6.x, p6.y); // Left corner of the new triangular base (Waterline)
-            ctx.lineTo(p4.x, p4.y); // Peak
-            ctx.lineTo(p5.x, p5.y); // Right corner of the new triangular base (Waterline)
+            ctx.moveTo(p6.x, p6.y); // Left corner of the new triangular base (Waterline, shrinks)
+            ctx.lineTo(p4.x, p4.y); // Peak (Chips down)
+            ctx.lineTo(p5.x, p5.y); // Right corner of the new triangular base (Waterline, shrinks)
             ctx.closePath();
             ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'; // Brighter white for ice
             ctx.fill();
