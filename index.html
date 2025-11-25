@@ -156,8 +156,10 @@
             const verticalLift = MAX_BASE_SCALE * 0.2 * progress; 
             
             // Chipping: Introduce non-symmetrical, fixed variance based on remaining days.
+            // Using a slightly stronger chipping variance for the visible part
             const shapingSeed = Math.sin(daysRemaining * 1.5 + daysRemaining / 5) * 0.5 + 0.5; // Predictable pseudo-random (0 to 1)
-            const chippingVariance = MAX_BASE_SCALE * 0.1 * progress; // Max variance increases as it melts
+            const chippingVariance = MAX_BASE_SCALE * 0.15 * progress; // Increased max variance for chipping
+
 
             // --- New Color Palette for Dark Theme (Shades of Pink and Dark Water) ---
             const skyBgColor = '#36364a';      // Dark Grey Sky/Progress Empty
@@ -232,17 +234,17 @@
             };
 
 
-            // Visible Part Points (P0-P6) - Applying chipping to the peak
+            // Visible Part Points (P0-P6) - Applying more aggressive chipping to the peak and mid-sections
             const topPoints = [
                 // P0, P1, P2 are the peak points, get the most dramatic variance
-                {x: (-0.1 * MAX_BASE_SCALE) * sizeFactor, y: (-0.7 * MAX_BASE_SCALE + verticalLift + chippingVariance * shapingSeed * 0.8) * sizeFactor}, 
-                {x: (0 * MAX_BASE_SCALE + chippingVariance * (1 - shapingSeed) * 0.4) * sizeFactor, y: (-0.8 * MAX_BASE_SCALE + verticalLift + chippingVariance * (1 - shapingSeed) * 0.8) * sizeFactor}, 
-                {x: (0.1 * MAX_BASE_SCALE) * sizeFactor, y: (-0.7 * MAX_BASE_SCALE + verticalLift - chippingVariance * shapingSeed * 0.8) * sizeFactor}, 
+                {x: (-0.1 * MAX_BASE_SCALE + chippingVariance * shapingSeed * 1.5) * sizeFactor, y: (-0.7 * MAX_BASE_SCALE + verticalLift + chippingVariance * shapingSeed * 1.0) * sizeFactor}, 
+                {x: (0 * MAX_BASE_SCALE + chippingVariance * (1 - shapingSeed) * 0.8) * sizeFactor, y: (-0.8 * MAX_BASE_SCALE + verticalLift + chippingVariance * (1 - shapingSeed) * 1.0) * sizeFactor}, 
+                {x: (0.1 * MAX_BASE_SCALE - chippingVariance * shapingSeed * 1.5) * sizeFactor, y: (-0.7 * MAX_BASE_SCALE + verticalLift - chippingVariance * shapingSeed * 1.0) * sizeFactor}, 
                 
-                {x: (0.3 * MAX_BASE_SCALE) * sizeFactor, y: (-0.3 * MAX_BASE_SCALE + verticalLift) * sizeFactor}, // P3: Far right middle
+                {x: (0.3 * MAX_BASE_SCALE - chippingVariance * (1 - shapingSeed) * 0.5) * sizeFactor, y: (-0.3 * MAX_BASE_SCALE + verticalLift) * sizeFactor}, // P3: Far right middle, pulls in more
                 {x: (0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0 * MAX_BASE_SCALE) * sizeFactor}, // P4: Right waterline (WL_R)
                 {x: (-0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0 * MAX_BASE_SCALE) * sizeFactor}, // P5: Left waterline (WL_L)
-                {x: (-0.3 * MAX_BASE_SCALE) * sizeFactor, y: (-0.3 * MAX_BASE_SCALE + verticalLift) * sizeFactor}, // P6: Far left middle
+                {x: (-0.3 * MAX_BASE_SCALE + chippingVariance * (1 - shapingSeed) * 0.5) * sizeFactor, y: (-0.3 * MAX_BASE_SCALE + verticalLift) * sizeFactor}, // P6: Far left middle, pulls in more
             ];
 
             // Submerged Part Points (Wider base, narrowing upwards)
