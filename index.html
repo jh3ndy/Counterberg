@@ -23,24 +23,19 @@
         }
     </style>
 </head>
-<!-- Use dark grey background for the body -->
-<body class="bg-neutral-900 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+<!-- Use dark grey background for the body --><body class="bg-neutral-900 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
 
     <div class="text-center mb-10 w-full max-w-xl">
-        <!-- Neon Green Title -->
-        <h1 class="text-4xl sm:text-5xl font-extrabold text-green-400 mb-2">
+        <!-- Neon Green Title --><h1 class="text-4xl sm:text-5xl font-extrabold text-green-400 mb-2">
             Countdown to Freedom!
         </h1>
-        <!-- Light Grey Subtitle -->
-        <p id="subtitle" class="text-neutral-400 text-lg mb-6">Days of School Remaining</p>
-        <!-- Neon Green Counter Box -->
-        <div id="countdown" class="text-6xl sm:text-8xl font-black text-neutral-900 p-6 rounded-xl bg-green-500 shadow-xl transition duration-300">
+        <!-- Light Grey Subtitle --><p id="subtitle" class="text-neutral-400 text-lg mb-6">Days of School Remaining</p>
+        <!-- Neon Green Counter Box --><div id="countdown" class="text-6xl sm:text-8xl font-black text-neutral-900 p-6 rounded-xl bg-green-500 shadow-xl transition duration-300">
             Calculating...
         </div>
     </div>
 
-    <!-- Canvas Container for the Iceberg Visualization -->
-    <div class="canvas-container shadow-2xl">
+    <!-- Canvas Container for the Iceberg Visualization --><div class="canvas-container shadow-2xl">
         <canvas id="icebergCanvas"></canvas>
     </div>
 
@@ -112,6 +107,51 @@
         }
 
         /**
+         * Draws a sliver moon in the upper right corner, using clipping to ensure a crisp edge.
+         * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+         * @param {number} W - Canvas width.
+         * @param {string} color - Color of the moon.
+         */
+        function drawMoon(ctx, W, color) {
+            const moonRadius = W * 0.05; // Relative size
+            const moonCenterX = W - moonRadius * 2.5;
+            const moonCenterY = moonRadius * 1.5;
+
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            
+            // 1. Draw the full circle that defines the outer edge of the moon
+            ctx.arc(moonCenterX, moonCenterY, moonRadius, 0, Math.PI * 2, false);
+            
+            // 2. Set the clipping path to this outer circle
+            ctx.save(); // Save the canvas state before clipping
+            ctx.clip(); 
+            
+            // 3. Draw the inner circle (the 'bite')
+            // This inner circle will only be visible where it overlaps with the outer circle, 
+            // but since it's the same color as the sky, it essentially erases that portion.
+            
+            // Draw a circle slightly smaller than the outer radius, offset to create the crescent
+            // Since we clip, we can simply fill the canvas with the sky color, and only the 
+            // part NOT overlapped by the second shape will remain in the clipping area.
+            
+            // Instead of clipping and filling, let's just use the shape drawing method correctly
+            // to ensure anti-aliasing doesn't create artifacts.
+            
+            // Correct Crescent Drawing (Using two intersecting arcs in a single path)
+            ctx.beginPath();
+            // Outer edge (starting from the top)
+            ctx.arc(moonCenterX, moonCenterY, moonRadius, Math.PI * 0.5, Math.PI * 1.5, true); 
+            // Inner edge (convex curve)
+            ctx.arc(moonCenterX - moonRadius * 0.4, moonCenterY, moonRadius * 0.9, Math.PI * 1.5, Math.PI * 0.5, false);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore(); // Restore the canvas state (removes the clipping path)
+        }
+
+
+        /**
          * Draws the dynamic iceberg visualization on the canvas, matching the reference image.
          * @param {number} daysRemaining - The current number of school days left (0 to 40).
          */
@@ -171,10 +211,14 @@
             ctx.fillStyle = skyProgressColor;
             ctx.fillRect(0, 0, progressWidth, waterLevelY);
 
+            // Draw the moon in the sky
+            drawMoon(ctx, W, textureHighlightColor);
+
 
             // Water (Deep Ocean)
             ctx.fillStyle = waterColor;
-            ctx.fillRect(0, waterLevelY, W, H - waterLevelY);
+            // Overlap by 1 pixel to remove the horizontal artifact at the water line
+            ctx.fillRect(0, waterLevelY - 1, W, H - waterLevelY + 1);
             
             // Check if the iceberg is completely melted (Day 0)
             if (daysRemaining <= 0) {
@@ -251,6 +295,28 @@
             const P6 = visiblePts[6];
             const T_A = internalPts[0]; const T_B = internalPts[1];
             const T_C = internalPts[2]; const T_D = internalPts[3];
+
+            // --- Draw Subtle Water Ripple (BEFORE the iceberg) ---
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'; // Lower opacity
+            ctx.lineWidth = 0.5; // Thinner lines to blend better
+            for (let i = 0; i < 2; i++) { 
+                const yOffset = waterLevelY + 15 + i * 10; // Deeper in the water
+                
+                // Add minor random variance to start/end X to make it less boxy
+                const waveOffset = Math.sin(i * 0.9 + progress * 5 + Date.now()/10000) * 10;
+                const startX = W * 0.15 + waveOffset;
+                const endX = W * 0.85 - waveOffset;
+
+                ctx.beginPath();
+                ctx.moveTo(startX, yOffset);
+                ctx.bezierCurveTo(
+                    W * 0.3 + Math.random() * 20, yOffset + Math.sin(i + progress * 10) * 2,
+                    W * 0.7 - Math.random() * 20, yOffset - Math.cos(i + progress * 10) * 2,
+                    endX, yOffset
+                );
+                ctx.stroke();
+            }
+
 
             // --- 3. Draw Iceberg Submerged Part (Dark/Muted Blues) ---
             ctx.shadowColor = 'transparent';
@@ -362,30 +428,8 @@
             ctx.fill();
 
 
-            // --- 5. Draw Water Line Overlay and Ripple ---
-            
-            // Subtle water reflection/ripple (drawn over the water/ice interface)
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; // Semi-transparent white
-            ctx.lineWidth = 1;
-
-            // Draw several undulating lines for the ripple effect
-            for (let i = 0; i < 5; i++) {
-                const yOffset = waterLevelY + 5 + i * 3;
-                // Create dynamic wave-like offsets based on current progress
-                const startX = Math.sin(i * 0.5 + progress * 5) * 5 + W * 0.1;
-                const endX = W - (Math.cos(i * 0.5 + progress * 5) * 5 + W * 0.1);
-
-                ctx.beginPath();
-                ctx.moveTo(startX, yOffset);
-                ctx.bezierCurveTo(
-                    W * 0.3 + Math.random() * 20, yOffset + Math.sin(i + progress * 10) * 2,
-                    W * 0.7 - Math.random() * 20, yOffset - Math.cos(i + progress * 10) * 2,
-                    endX, yOffset
-                );
-                ctx.stroke();
-            }
-
-            // Crisp Neon Green line (must be last to ensure it's on top)
+            // --- 5. Draw Water Line Overlay (Last to ensure it's on top) ---
+            // Crisp Neon Green line
             ctx.beginPath();
             ctx.moveTo(0, waterLevelY);
             ctx.lineTo(W, waterLevelY);
