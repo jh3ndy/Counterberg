@@ -101,7 +101,6 @@
             }
 
             // Days remaining = Total count (40) - Days elapsed
-            // The 40th and final school day is now correctly calculated as February 13th, 2026.
             const daysRemaining = Math.max(0, MAX_SCHOOL_DAYS - daysBeforeTarget);
             
             return daysRemaining;
@@ -120,17 +119,24 @@
 
             // Calculate progress: 0 (Day MAX_SCHOOL_DAYS) to 1 (Day 0)
             const progress = (MAX_SCHOOL_DAYS - daysRemaining) / MAX_SCHOOL_DAYS;
-
+            
+            // Overall reduction factor (1.0 at day 40, approaches 0 at day 0)
+            const sizeFactor = daysRemaining / MAX_SCHOOL_DAYS; 
+            
+            // The initial, maximum scale for geometry definitions
+            const MAX_BASE_SCALE = W * 0.25; 
+            
             // --- Drawing Parameters ---
             const centerX = W / 2;
             const waterLevelY = H * 0.5; // Fixed water line
-            const baseScale = W * 0.25; // Overall scale for the iceberg size
 
-            // Dynamic adjustments based on progress
-            const peakLift = baseScale * 0.2 * progress; // How much the peak moves down (chipping)
-            const totalVerticalShift = baseScale * 0.3 * progress; // Overall rise of the iceberg (buoyancy)
-            const widthShrink = baseScale * 0.15 * progress; // How much the width shrinks
-
+            // Buoyancy: Lift the iceberg as it gets smaller (progress goes from 0 to 1)
+            const verticalLift = MAX_BASE_SCALE * 0.2 * progress; 
+            
+            // Chipping: Introduce non-symmetrical, fixed variance based on remaining days.
+            // This ensures the peak shifts slightly each day but is stable throughout the day.
+            const shapingSeed = Math.sin(daysRemaining * 1.5 + daysRemaining / 5) * 0.5 + 0.5; // Predictable pseudo-random (0 to 1)
+            const chippingVariance = MAX_BASE_SCALE * 0.1 * progress; // Max variance increases as it melts
 
             // --- 1. Draw Water and Sky ---
             // Sky
@@ -140,36 +146,66 @@
             // Water (Deep Ocean)
             ctx.fillStyle = '#106dae';
             ctx.fillRect(0, waterLevelY, W, H - waterLevelY);
+            
+            // Check if the iceberg is completely melted (Day 0)
+            if (daysRemaining <= 0) {
+                 // Skip drawing the iceberg geometry, only the water line remains
+                 // Crisp white line
+                ctx.beginPath();
+                ctx.moveTo(0, waterLevelY);
+                ctx.lineTo(W, waterLevelY);
+                ctx.strokeStyle = '#ffffff'; 
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                return; 
+            }
 
 
-            // --- 2. Define Iceberg Points (Relative to centerX, waterLevelY, and scale) ---
+            // --- 2. Define Iceberg Points (Relative to centerX, waterLevelY, and MAX_BASE_SCALE) ---
+            
+            // All coordinates are multiplied by sizeFactor for smooth, proportional shrinking.
             
             // Internal Texture Points (T1-T4)
-            const T1 = {x: -0.05 * baseScale + widthShrink * 0.3, y: -0.4 * baseScale + peakLift * 0.6}; // High Center Left
-            const T2 = {x: 0.15 * baseScale - widthShrink * 0.4, y: -0.5 * baseScale + peakLift * 0.7}; // High Center Right
-            const T3 = {x: -0.18 * baseScale + widthShrink * 0.6, y: -0.2 * baseScale + peakLift * 0.4}; // Low Left Ridge
-            const T4 = {x: 0.05 * baseScale - widthShrink * 0.1, y: -0.15 * baseScale + peakLift * 0.3}; // Low Center Ridge
+            const T1 = {
+                x: (-0.05 * MAX_BASE_SCALE + chippingVariance * shapingSeed * 0.2) * sizeFactor, 
+                y: (-0.4 * MAX_BASE_SCALE + verticalLift * 0.5) * sizeFactor
+            };
+            const T2 = {
+                x: (0.15 * MAX_BASE_SCALE - chippingVariance * (1 - shapingSeed) * 0.2) * sizeFactor, 
+                y: (-0.5 * MAX_BASE_SCALE + verticalLift * 0.5) * sizeFactor
+            };
+            const T3 = {
+                x: (-0.18 * MAX_BASE_SCALE) * sizeFactor, 
+                y: (-0.2 * MAX_BASE_SCALE + verticalLift * 0.8) * sizeFactor
+            };
+            const T4 = {
+                x: (0.05 * MAX_BASE_SCALE) * sizeFactor, 
+                y: (-0.15 * MAX_BASE_SCALE + verticalLift * 0.8) * sizeFactor
+            };
 
-            // Visible Part Points (P0-P6)
+
+            // Visible Part Points (P0-P6) - Applying chipping to the peak
             const topPoints = [
-                {x: -0.1 * baseScale + widthShrink * 0.5, y: -0.7 * baseScale + peakLift}, // P0: Left-most peak facet
-                {x: 0 * baseScale, y: -0.8 * baseScale + peakLift}, // P1: Main peak
-                {x: 0.1 * baseScale - widthShrink * 0.5, y: -0.7 * baseScale + peakLift}, // P2: Right-most peak facet
-                {x: 0.3 * baseScale - widthShrink, y: -0.3 * baseScale + peakLift * 0.5}, // P3: Far right middle
-                {x: 0.25 * baseScale - widthShrink * 0.7, y: 0 * baseScale}, // P4: Right waterline (WL_R)
-                {x: -0.25 * baseScale + widthShrink * 0.7, y: 0 * baseScale}, // P5: Left waterline (WL_L)
-                {x: -0.3 * baseScale + widthShrink, y: -0.3 * baseScale + peakLift * 0.5}, // P6: Far left middle
+                // P0, P1, P2 are the peak points, get the most dramatic variance
+                {x: (-0.1 * MAX_BASE_SCALE) * sizeFactor, y: (-0.7 * MAX_BASE_SCALE + verticalLift + chippingVariance * shapingSeed * 0.8) * sizeFactor}, 
+                {x: (0 * MAX_BASE_SCALE + chippingVariance * (1 - shapingSeed) * 0.4) * sizeFactor, y: (-0.8 * MAX_BASE_SCALE + verticalLift + chippingVariance * (1 - shapingSeed) * 0.8) * sizeFactor}, 
+                {x: (0.1 * MAX_BASE_SCALE) * sizeFactor, y: (-0.7 * MAX_BASE_SCALE + verticalLift - chippingVariance * shapingSeed * 0.8) * sizeFactor}, 
+                
+                {x: (0.3 * MAX_BASE_SCALE) * sizeFactor, y: (-0.3 * MAX_BASE_SCALE + verticalLift) * sizeFactor}, // P3: Far right middle
+                {x: (0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0 * MAX_BASE_SCALE) * sizeFactor}, // P4: Right waterline (WL_R) - Should remain near zero vertical offset if sizeFactor is 0
+                {x: (-0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0 * MAX_BASE_SCALE) * sizeFactor}, // P5: Left waterline (WL_L)
+                {x: (-0.3 * MAX_BASE_SCALE) * sizeFactor, y: (-0.3 * MAX_BASE_SCALE + verticalLift) * sizeFactor}, // P6: Far left middle
             ];
 
-            // Submerged Part Points
+            // Submerged Part Points (Symmetrically shrinking and rising)
             const submergedPoints = [
-                {x: -0.25 * baseScale + widthShrink * 0.7, y: 0 * baseScale}, // P0: Left waterline (matches visible)
-                {x: 0.25 * baseScale - widthShrink * 0.7, y: 0 * baseScale}, // P1: Right waterline (matches visible)
-                {x: 0.25 * baseScale - widthShrink * 0.8, y: 0.3 * baseScale + totalVerticalShift}, // P2: Right-lower-side
-                {x: 0.15 * baseScale - widthShrink * 0.5, y: 0.6 * baseScale + totalVerticalShift * 0.8}, // P3: Lower-right deep
-                {x: 0 * baseScale, y: 0.8 * baseScale + totalVerticalShift * 0.6}, // P4: Bottom tip
-                {x: -0.15 * baseScale + widthShrink * 0.5, y: 0.6 * baseScale + totalVerticalShift * 0.8}, // P5: Lower-left deep
-                {x: -0.25 * baseScale + widthShrink * 0.8, y: 0.3 * baseScale + totalVerticalShift}, // P6: Left-lower-side
+                {x: (-0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0 * MAX_BASE_SCALE) * sizeFactor}, // P0: Left waterline
+                {x: (0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0 * MAX_BASE_SCALE) * sizeFactor}, // P1: Right waterline
+                {x: (0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0.3 * MAX_BASE_SCALE + verticalLift * 0.5) * sizeFactor}, 
+                {x: (0.15 * MAX_BASE_SCALE) * sizeFactor, y: (0.6 * MAX_BASE_SCALE + verticalLift * 0.2) * sizeFactor}, 
+                {x: (0 * MAX_BASE_SCALE) * sizeFactor, y: (0.8 * MAX_BASE_SCALE + verticalLift * 0.1) * sizeFactor}, 
+                {x: (-0.15 * MAX_BASE_SCALE) * sizeFactor, y: (0.6 * MAX_BASE_SCALE + verticalLift * 0.2) * sizeFactor}, 
+                {x: (-0.25 * MAX_BASE_SCALE) * sizeFactor, y: (0.3 * MAX_BASE_SCALE + verticalLift * 0.5) * sizeFactor}, 
             ];
 
             // Helper to offset points to canvas coordinates
