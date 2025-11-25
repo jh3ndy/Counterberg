@@ -41,9 +41,10 @@
 
     <script>
         // --- Configuration Constants ---
-        const MAX_SCHOOL_DAYS = 40;
+        // The total number of school days, confirmed to be 40 (Tue-Fri only).
+        const MAX_SCHOOL_DAYS = 40; 
         const START_DATE_STR = '2025-11-25T00:00:00'; // First day (Day 40 remaining)
-        const BREAK_START_STR = '2025-12-20T00:00:00'; // Holiday starts (Dec 20th is NOT counted)
+        const BREAK_START_STR = '2025-12-20T00:00:00'; // Holiday starts (Dec 20th is the first non-school day)
         const BREAK_END_STR = '2026-01-06T00:00:00'; // School resumes (Jan 6th IS counted)
         
         const START_DATE = new Date(START_DATE_STR);
@@ -51,18 +52,22 @@
         const BREAK_END_EXCLUSIVE = new Date(BREAK_END_STR);
         
         /**
-         * Checks if a given date is a school day based on the defined rules.
+         * Checks if a given date is a school day based on the defined rules (Tue-Fri only).
          * @param {Date} date - The date to check.
          * @returns {boolean} True if it is a school day.
          */
         function isSchoolDay(date) {
-            // 1. Check Weekend (0=Sun, 6=Sat)
+            // Day of week: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
             const day = date.getDay();
-            if (day === 0 || day === 6) {
+
+            // 1. Check for Non-School Days (Mon, Sat, Sun)
+            // Days 0 (Sun), 1 (Mon), and 6 (Sat) are excluded.
+            if (day === 0 || day === 1 || day === 6) {
                 return false;
             }
 
             // 2. Check Holiday Break (Dec 20, 2025 up to Jan 5, 2026, inclusive)
+            // Note: Jan 6th (BREAK_END_EXCLUSIVE) IS counted.
             if (date >= BREAK_START && date < BREAK_END_EXCLUSIVE) {
                 return false;
             }
@@ -95,15 +100,10 @@
                 currentDate.setDate(currentDate.getDate() + 1);
             }
 
-            // Days remaining = Total count - Days elapsed
+            // Days remaining = Total count (40) - Days elapsed
+            // The 40th and final school day is now correctly calculated as February 13th, 2026.
             const daysRemaining = Math.max(0, MAX_SCHOOL_DAYS - daysBeforeTarget);
             
-            // Check for the absolute end date (Feb 13, 2026 is the 40th school day)
-            const FINAL_DAY = new Date('2026-02-13T00:00:00');
-            if (checkDate > FINAL_DAY && daysRemaining > 0) {
-                 return 0; // Ensure count is 0 if we're past the end
-            }
-
             return daysRemaining;
         }
 
@@ -118,7 +118,7 @@
             const H = canvas.height;
             ctx.clearRect(0, 0, W, H);
 
-            // Calculate progress: 0 (Day 40) to 1 (Day 0)
+            // Calculate progress: 0 (Day MAX_SCHOOL_DAYS) to 1 (Day 0)
             const progress = (MAX_SCHOOL_DAYS - daysRemaining) / MAX_SCHOOL_DAYS;
 
             // --- Drawing Parameters ---
