@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Days Countdown</title>
+    <!-- Tailwind CSS for modern, responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the canvas container */
+        .canvas-container {
+            max-width: 600px;
+            width: 90%;
+            margin: 0 auto;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            background-color: #f7fafc; /* Tailwind gray-50 */
+            overflow: hidden;
+        }
+        #icebergCanvas {
+            display: block;
+            width: 100%;
+            height: 400px; /* Fixed height for the drawing area */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+
+    <div class="text-center mb-10 w-full max-w-xl">
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-blue-900 mb-2">
+            Countdown to Freedom!
+        </h1>
+        <p class="text-gray-600 text-lg mb-6">Days of School Remaining</p>
+        <div id="countdown" class="text-6xl sm:text-8xl font-black text-white p-6 rounded-xl bg-blue-600 shadow-xl transition duration-300">
+            Calculating...
+        </div>
+    </div>
+
+    <!-- Canvas Container for the Iceberg Visualization -->
+    <div class="canvas-container shadow-2xl">
+        <canvas id="icebergCanvas"></canvas>
+    </div>
+
+    <script>
+        // --- Configuration Constants ---
+        const MAX_SCHOOL_DAYS = 40;
+        const START_DATE_STR = '2025-11-25T00:00:00'; // First day (Day 40 remaining)
+        const BREAK_START_STR = '2025-12-20T00:00:00'; // Holiday starts (Dec 20th is NOT counted)
+        const BREAK_END_STR = '2026-01-06T00:00:00'; // School resumes (Jan 6th IS counted)
+        
+        const START_DATE = new Date(START_DATE_STR);
+        const BREAK_START = new Date(BREAK_START_STR);
+        const BREAK_END_EXCLUSIVE = new Date(BREAK_END_STR);
+        
+        /**
+         * Checks if a given date is a school day based on the defined rules.
+         * @param {Date} date - The date to check.
+         * @returns {boolean} True if it is a school day.
+         */
+        function isSchoolDay(date) {
+            // 1. Check Weekend (0=Sun, 6=Sat)
+            const day = date.getDay();
+            if (day === 0 || day === 6) {
+                return false;
+            }
+
+            // 2. Check Holiday Break (Dec 20, 2025 up to Jan 5, 2026, inclusive)
+            // Note: BREAK_END_EXCLUSIVE is Jan 6th, so < BREAK_END_EXCLUSIVE means up to Jan 5th 23:59:59.
+            if (date >= BREAK_START && date < BREAK_END_EXCLUSIVE) {
+                return false;
+            }
+
+            return true;
+        }
+
+        /**
+         * Calculates the number of remaining school days.
+         * The count is based on how many school days have passed since the START_DATE.
+         * Day 40 remaining is on Nov 25th.
+         */
+        function calculateDaysRemaining() {
+            const today = new Date();
+            // Reset time to midnight for accurate day comparison
+            today.setHours(0, 0, 0, 0);
+
+            // If today is before the start date, the full count remains
+            if (today < START_DATE) {
+                return MAX_SCHOOL_DAYS;
+            }
+
+            let daysBeforeToday = 0;
+            let currentDate = new Date(START_DATE);
+
+            // Iterate through every day from START_DATE up to (but not including) today
+            while (currentDate < today) {
+                if (isSchoolDay(currentDate)) {
+                    daysBeforeToday++;
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+
+            // Days remaining = Total count - Days elapsed
+            const daysRemaining = Math.max(0, MAX_SCHOOL_DAYS - daysBeforeToday);
+            
+            // Check for the absolute end date (Feb 13, 2026 is the 40th school day)
+            const FINAL_DAY = new Date('2026-02-13T00:00:00');
+            if (today > FINAL_DAY && daysRemaining > 0) {
+                 return 0; // Ensure count is 0 if we're past the end
+            }
+
+            return daysRemaining;
+        }
+
+        /**
+         * Draws the dynamic iceberg visualization on the canvas.
+         * The iceberg rises and gets chipped away based on the countdown progress.
+         * @param {number} daysRemaining - The current number of school days left (0 to 40).
+         */
+        function drawIceberg(daysRemaining) {
+            const canvas = document.getElementById('icebergCanvas');
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width;
+            const H = canvas.height;
+            ctx.clearRect(0, 0, W, H);
+
+            // Calculate progress: 0 (Day 40) to 1 (Day 0)
+            const progress = (MAX_SCHOOL_DAYS - daysRemaining) / MAX_SCHOOL_DAYS;
+
+            // --- Drawing Parameters ---
+            const centerX = W / 2;
+            const scale = W * 0.3; // Base scale for the iceberg size
+            const waterLevel = H * 0.5;
+
+            // Dynamic vertical shift (Iceberg rising out of the water)
+            const maxRise = H * 0.15;
+            // The iceberg rises out of the water as progress increases
+            const verticalShift = maxRise * progress * 0.8;
+
+            // --- 1. Draw Water and Sky ---
+            // Sky/Air
+            ctx.fillStyle = '#87ceeb'; // Light sky blue
+            ctx.fillRect(0, 0, W, waterLevel);
+
+            // Water (Deep Ocean)
+            ctx.fillStyle = '#005f99'; // Deep ocean blue
+            ctx.fillRect(0, waterLevel, W, H - waterLevel);
+
+
+            // --- 2. Define Iceberg Points (Dynamic Chipping/Rising) ---
+
+            // Submerged base points (Shift down as iceberg rises)
+            const p1 = { x: centerX - scale * 0.4, y: waterLevel + scale * 0.4 + verticalShift };
+            const p2 = { x: centerX + scale * 0.4, y: waterLevel + scale * 0.5 + verticalShift };
+            const p3 = { x: centerX, y: H }; // Absolute bottom point
+
+            // Top-of-water points
+            const p7 = { x: centerX - scale * 0.15, y: waterLevel }; // Water line left
+            const p8 = { x: centerX + scale * 0.15, y: waterLevel }; // Water line right
+
+            // Dynamic Top points (Chipped away/lowered based on progress)
+            const basePeakY = waterLevel - scale * 0.7; // Initial highest point
+
+            // Peak (P4) - Gets lower and shifts right slightly
+            const p4 = {
+                x: centerX + scale * 0.05 * progress,
+                y: basePeakY + (waterLevel - scale * 0.1 - basePeakY) * progress * 0.8 // Aggressive vertical chipping
+            };
+
+            // Right Shoulder (P5) - Gets less prominent/lower
+            const p5_startX = centerX + scale * 0.25;
+            const p5_endX = centerX + scale * 0.0;
+            const p5_startY = waterLevel - scale * 0.5;
+            const p5_endY = waterLevel - scale * 0.15;
+            const p5 = {
+                x: p5_startX + (p5_endX - p5_startX) * progress * 0.7,
+                y: p5_startY + (p5_endY - p5_startY) * progress * 0.8
+            };
+
+            // Left Shoulder (P6) - Gets drastically chipped/lower/asymmetrical
+            const p6_startX = centerX - scale * 0.3;
+            const p6_endX = centerX + scale * 0.0;
+            const p6_startY = waterLevel - scale * 0.6;
+            const p6_endY = waterLevel - scale * 0.2;
+            const p6 = {
+                x: p6_startX + (p6_endX - p6_startX) * progress * 0.9, // Shifts right/inward aggressively
+                y: p6_startY + (p6_endY - p6_startY) * progress * 0.9 // Gets low aggressively
+            };
+
+            // --- 3. Draw Iceberg Submerged Part ---
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y); // Underwater base left
+            ctx.lineTo(p3.x, p3.y); // Bottom point
+            ctx.lineTo(p2.x, p2.y); // Underwater base right
+            ctx.lineTo(p8.x, p8.y); // Water line right
+            ctx.lineTo(p7.x, p7.y); // Water line left
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(70, 130, 180, 0.7)'; // Steel blue, translucent
+            ctx.fill();
+            ctx.strokeStyle = '#3a668c';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // --- 4. Draw Iceberg Visible Part (above water) ---
+            ctx.beginPath();
+            ctx.moveTo(p7.x, p7.y); // Water line left
+            ctx.lineTo(p6.x, p6.y); // Left chipped point
+            ctx.lineTo(p4.x, p4.y); // Peak
+            ctx.lineTo(p5.x, p5.y); // Right chipped point
+            ctx.lineTo(p8.x, p8.y); // Water line right
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // White/light blue for ice
+            ctx.fill();
+            ctx.strokeStyle = '#ccc';
+            ctx.stroke();
+
+            // --- 5. Draw Water Line Overlay ---
+            // This adds a stark separation line between air and water
+            ctx.beginPath();
+            ctx.moveTo(0, waterLevel);
+            ctx.lineTo(W, waterLevel);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+        }
+
+        /**
+         * Main function to run the calculation and drawing.
+         */
+        function updateDisplay() {
+            const daysRemaining = calculateDaysRemaining();
+            
+            // Update the HTML countdown text
+            const countdownEl = document.getElementById('countdown');
+            countdownEl.textContent = daysRemaining;
+            
+            // Adjust color based on remaining days
+            if (daysRemaining <= 10) {
+                countdownEl.classList.remove('bg-blue-600', 'bg-yellow-500');
+                countdownEl.classList.add('bg-red-500');
+            } else if (daysRemaining <= 20) {
+                countdownEl.classList.remove('bg-blue-600', 'bg-red-500');
+                countdownEl.classList.add('bg-yellow-500');
+            } else {
+                countdownEl.classList.remove('bg-red-500', 'bg-yellow-500');
+                countdownEl.classList.add('bg-blue-600');
+            }
+
+
+            // Draw the iceberg
+            const canvas = document.getElementById('icebergCanvas');
+            // Ensure canvas size is set to the container size before drawing
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight; 
+            drawIceberg(daysRemaining);
+        }
+        
+        // --- Initialization and Event Listeners ---
+        window.addEventListener('DOMContentLoaded', updateDisplay);
+        window.addEventListener('resize', updateDisplay);
+
+    </script>
+</body>
+</html>
