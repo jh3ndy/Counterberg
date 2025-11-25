@@ -108,8 +108,7 @@
         }
 
         /**
-         * Draws the dynamic iceberg visualization on the canvas.
-         * The iceberg rises and gets chipped away based on the countdown progress.
+         * Draws the dynamic iceberg visualization on the canvas, matching the reference image.
          * @param {number} daysRemaining - The current number of school days left (0 to 40).
          */
         function drawIceberg(daysRemaining) {
@@ -124,120 +123,220 @@
 
             // --- Drawing Parameters ---
             const centerX = W / 2;
-            const scale = W * 0.3; // Base scale for the iceberg size
-            const waterLevel = H * 0.5;
+            const waterLevelY = H * 0.5; // Fixed water line
+            const baseScale = W * 0.25; // Overall scale for the iceberg size
 
-            // Dynamic vertical shift (Iceberg rising out of the water)
-            const maxRise = H * 0.15;
-            // The iceberg rises out of the water as progress increases (Buoyancy effect)
-            const buoyancyShift = maxRise * progress * 0.8;
+            // Dynamic adjustments based on progress
+            const peakLift = baseScale * 0.2 * progress; // How much the peak moves down (chipping)
+            const totalVerticalShift = baseScale * 0.3 * progress; // Overall rise of the iceberg (buoyancy)
+            const widthShrink = baseScale * 0.15 * progress; // How much the width shrinks
+
 
             // --- 1. Draw Water and Sky ---
-            // Sky/Air
-            ctx.fillStyle = '#87ceeb'; // Light sky blue
-            ctx.fillRect(0, 0, W, waterLevel);
+            // Sky
+            ctx.fillStyle = '#87ceeb';
+            ctx.fillRect(0, 0, W, waterLevelY);
 
             // Water (Deep Ocean)
-            ctx.fillStyle = '#005f99'; // Deep ocean blue
-            ctx.fillRect(0, waterLevel, W, H - waterLevel);
+            ctx.fillStyle = '#106dae';
+            ctx.fillRect(0, waterLevelY, W, H - waterLevelY);
 
 
-            // --- 2. Define Iceberg Points (Triangular and Dynamic) ---
-
-            // Submerged base points (Bottom rises up as progress increases)
-            const submergedDepth = scale * 0.6;
-            const p1 = { x: centerX - scale * 0.4, y: waterLevel + submergedDepth * 0.7 + buoyancyShift };
-            const p2 = { x: centerX + scale * 0.4, y: waterLevel + submergedDepth * 0.8 + buoyancyShift };
+            // --- 2. Define Iceberg Points (Relative to centerX, waterLevelY, and scale) ---
             
-            // P3 is the absolute bottom point, moves up to simulate shrinking
-            const maxP3Rise = H - (waterLevel + submergedDepth); // Maximum distance P3 can rise
-            const p3 = { x: centerX, y: H - (maxP3Rise * progress) }; 
-            
-            // Waterline connection points (used for submerged part)
-            const p7 = { x: centerX - scale * 0.15, y: waterLevel };
-            const p8 = { x: centerX + scale * 0.15, y: waterLevel };
+            // Internal Texture Points (T1-T4)
+            const T1 = {x: -0.05 * baseScale + widthShrink * 0.3, y: -0.4 * baseScale + peakLift * 0.6}; // High Center Left
+            const T2 = {x: 0.15 * baseScale - widthShrink * 0.4, y: -0.5 * baseScale + peakLift * 0.7}; // High Center Right
+            const T3 = {x: -0.18 * baseScale + widthShrink * 0.6, y: -0.2 * baseScale + peakLift * 0.4}; // Low Left Ridge
+            const T4 = {x: 0.05 * baseScale - widthShrink * 0.1, y: -0.15 * baseScale + peakLift * 0.3}; // Low Center Ridge
 
-            // --- Visible Part Points (More Triangular Shape) ---
-            const basePeakY = waterLevel - scale * 0.8; // Initial highest point
+            // Visible Part Points (P0-P6)
+            const topPoints = [
+                {x: -0.1 * baseScale + widthShrink * 0.5, y: -0.7 * baseScale + peakLift}, // P0: Left-most peak facet
+                {x: 0 * baseScale, y: -0.8 * baseScale + peakLift}, // P1: Main peak
+                {x: 0.1 * baseScale - widthShrink * 0.5, y: -0.7 * baseScale + peakLift}, // P2: Right-most peak facet
+                {x: 0.3 * baseScale - widthShrink, y: -0.3 * baseScale + peakLift * 0.5}, // P3: Far right middle
+                {x: 0.25 * baseScale - widthShrink * 0.7, y: 0 * baseScale}, // P4: Right waterline (WL_R)
+                {x: -0.25 * baseScale + widthShrink * 0.7, y: 0 * baseScale}, // P5: Left waterline (WL_L)
+                {x: -0.3 * baseScale + widthShrink, y: -0.3 * baseScale + peakLift * 0.5}, // P6: Far left middle
+            ];
 
-            // Peak (P4) - Stays centered, moves down to simulate chipping/shrinking
-            const p4 = {
-                x: centerX,
-                // Peak moves down (shrinks) relative to its max height
-                y: basePeakY + (waterLevel - scale * 0.2 - basePeakY) * progress 
-            };
+            // Submerged Part Points
+            const submergedPoints = [
+                {x: -0.25 * baseScale + widthShrink * 0.7, y: 0 * baseScale}, // P0: Left waterline (matches visible)
+                {x: 0.25 * baseScale - widthShrink * 0.7, y: 0 * baseScale}, // P1: Right waterline (matches visible)
+                {x: 0.25 * baseScale - widthShrink * 0.8, y: 0.3 * baseScale + totalVerticalShift}, // P2: Right-lower-side
+                {x: 0.15 * baseScale - widthShrink * 0.5, y: 0.6 * baseScale + totalVerticalShift * 0.8}, // P3: Lower-right deep
+                {x: 0 * baseScale, y: 0.8 * baseScale + totalVerticalShift * 0.6}, // P4: Bottom tip
+                {x: -0.15 * baseScale + widthShrink * 0.5, y: 0.6 * baseScale + totalVerticalShift * 0.8}, // P5: Lower-left deep
+                {x: -0.25 * baseScale + widthShrink * 0.8, y: 0.3 * baseScale + totalVerticalShift}, // P6: Left-lower-side
+            ];
 
-            // Visible Base Width (Base of the triangle above water)
-            const initialVisibleBaseWidth = scale * 0.4; 
-            
-            // Left Shoulder (P6) - Forms the left corner of the triangle base
-            const p6 = {
-                // Moves inward (shrinks in width)
-                x: centerX - initialVisibleBaseWidth / 2 + (scale * 0.15 * progress), 
-                y: waterLevel
-            };
+            // Helper to offset points to canvas coordinates
+            const offsetPoints = (points, offsetY = waterLevelY) => points.map(p => ({
+                x: centerX + p.x,
+                y: offsetY + p.y
+            }));
 
-            // Right Shoulder (P5) - Forms the right corner of the triangle base
-            const p5 = {
-                // Moves inward (shrinks in width)
-                x: centerX + initialVisibleBaseWidth / 2 - (scale * 0.15 * progress), 
-                y: waterLevel
-            };
+            const visiblePts = offsetPoints(topPoints, waterLevelY);
+            const submergedPts = offsetPoints(submergedPoints, waterLevelY);
+            const internalPts = offsetPoints([T1, T2, T3, T4], waterLevelY);
 
+            // Alias key points for drawing clarity
+            const P0 = visiblePts[0]; const P1 = visiblePts[1]; const P2 = visiblePts[2];
+            const P3 = visiblePts[3]; const P4 = visiblePts[4]; const P5 = visiblePts[5];
+            const P6 = visiblePts[6];
+            const T_A = internalPts[0]; const T_B = internalPts[1];
+            const T_C = internalPts[2]; const T_D = internalPts[3];
 
-            // --- 3. Draw Iceberg Submerged Part (with shadow) ---
-            
-            // Shadow for the submerged portion (gives it a floating/3D lift effect)
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-            ctx.shadowBlur = 15;
-            ctx.shadowOffsetX = 0; 
-            ctx.shadowOffsetY = 5; 
+            // --- 3. Draw Iceberg Submerged Part ---
+            const submergedDarkBlue = '#1d71b3';
+            const submergedLightBlue = '#2887cc';
+            const submergedHighlightBlue = '#3a9ce6';
 
-
-            ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y); // Underwater base left
-            ctx.lineTo(p3.x, p3.y); // Bottom point (Rises)
-            ctx.lineTo(p2.x, p2.y); // Underwater base right
-            ctx.lineTo(p8.x, p8.y); // Water line right
-            ctx.lineTo(p7.x, p7.y); // Water line left
-            ctx.closePath();
-            ctx.fillStyle = 'rgba(70, 130, 180, 0.7)'; // Steel blue, translucent
-            ctx.fill();
-            ctx.strokeStyle = '#3a668c';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // --- 4. Draw Iceberg Visible Part (above water, with shadow) ---
-            
-            // Adjust shadow for the top portion (slight side/down shadow)
-            ctx.shadowOffsetX = 3;
-            ctx.shadowOffsetY = 3;
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-
-
-            ctx.beginPath();
-            ctx.moveTo(p6.x, p6.y); // Left corner of the new triangular base (Waterline, shrinks)
-            ctx.lineTo(p4.x, p4.y); // Peak (Chips down)
-            ctx.lineTo(p5.x, p5.y); // Right corner of the new triangular base (Waterline, shrinks)
-            ctx.closePath();
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'; // Brighter white for ice
-            ctx.fill();
-            ctx.strokeStyle = '#a0aec0'; // Lighter stroke
-            ctx.stroke();
-            
-            // Reset shadows after drawing the main element
             ctx.shadowColor = 'transparent';
             ctx.shadowBlur = 0;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 0;
 
-
-            // --- 5. Draw Water Line Overlay ---
-            // This adds a stark separation line between air and water
+            // Main submerged shape (darkest base)
             ctx.beginPath();
-            ctx.moveTo(0, waterLevel);
-            ctx.lineTo(W, waterLevel);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.moveTo(submergedPts[0].x, submergedPts[0].y); 
+            ctx.lineTo(submergedPts[6].x, submergedPts[6].y); 
+            ctx.lineTo(submergedPts[5].x, submergedPts[5].y); 
+            ctx.lineTo(submergedPts[4].x, submergedPts[4].y); 
+            ctx.lineTo(submergedPts[3].x, submergedPts[3].y); 
+            ctx.lineTo(submergedPts[2].x, submergedPts[2].y); 
+            ctx.lineTo(submergedPts[1].x, submergedPts[1].y); 
+            ctx.closePath();
+            ctx.fillStyle = submergedDarkBlue;
+            ctx.fill();
+
+            // Lighter submerged facet (right side)
+            ctx.beginPath();
+            ctx.moveTo(submergedPts[1].x, submergedPts[1].y); 
+            ctx.lineTo(submergedPts[2].x, submergedPts[2].y); 
+            ctx.lineTo(submergedPts[3].x, submergedPts[3].y); 
+            ctx.closePath();
+            ctx.fillStyle = submergedLightBlue;
+            ctx.fill();
+
+            // Submerged highlight (middle triangle)
+            ctx.beginPath();
+            ctx.moveTo(submergedPts[0].x, submergedPts[0].y); 
+            ctx.lineTo(submergedPts[1].x, submergedPts[1].y); 
+            ctx.lineTo(submergedPts[4].x, submergedPts[4].y); 
+            ctx.closePath();
+            ctx.fillStyle = submergedHighlightBlue;
+            ctx.fill();
+
+
+            // --- 4. Draw Iceberg Visible Part (Including New Texture) ---
+            const visibleLight = '#f0f8ff'; 
+            const visibleMid = '#e0f2f7';
+            const visibleDark = '#c7e9f4';
+            const textureCreviceColor = '#D0F0FF'; // Blueish-white for depth
+            const textureHighlightColor = '#FFFFFF'; // Pure white for shine
+
+
+            // Main visible shape (largest face - visibleMid base)
+            ctx.beginPath();
+            ctx.moveTo(P5.x, P5.y); // Left waterline
+            ctx.lineTo(P6.x, P6.y); // Far left middle
+            ctx.lineTo(P0.x, P0.y); // Left-most peak facet
+            ctx.lineTo(P1.x, P1.y); // Main peak
+            ctx.lineTo(P2.x, P2.y); // Right-most peak facet
+            ctx.lineTo(P3.x, P3.y); // Far right middle
+            ctx.lineTo(P4.x, P4.y); // Right waterline
+            ctx.closePath();
+            ctx.fillStyle = visibleMid;
+            ctx.fill();
+
+            // Front-right facet (lighter)
+            ctx.beginPath();
+            ctx.moveTo(P1.x, P1.y); // Main peak
+            ctx.lineTo(P2.x, P2.y); // Right-most peak facet
+            ctx.lineTo(P3.x, P3.y); // Far right middle
+            ctx.closePath();
+            ctx.fillStyle = visibleLight;
+            ctx.fill();
+            
+            // Front-left facet (darker)
+            ctx.beginPath();
+            ctx.moveTo(P1.x, P1.y); // Main peak
+            ctx.lineTo(P0.x, P0.y); // Left-most peak facet
+            ctx.lineTo(P6.x, P6.y); // Far left middle
+            ctx.closePath();
+            ctx.fillStyle = visibleDark;
+            ctx.fill();
+
+            // --- New Texture Facets (Drawn on top for detail) ---
+
+            // 1. Crevice/Shadow on the main face (P1, T_A, T_B)
+            ctx.beginPath();
+            ctx.moveTo(P1.x, P1.y);
+            ctx.lineTo(T_A.x, T_A.y);
+            ctx.lineTo(T_B.x, T_B.y);
+            ctx.closePath();
+            ctx.fillStyle = textureCreviceColor;
+            ctx.fill();
+
+            // 2. Small highlight near the peak (P0, P1, T_A)
+            ctx.beginPath();
+            ctx.moveTo(P0.x, P0.y);
+            ctx.lineTo(P1.x, P1.y);
+            ctx.lineTo(T_A.x, T_A.y);
+            ctx.closePath();
+            ctx.fillStyle = textureHighlightColor;
+            ctx.fill();
+
+            // 3. Ridge near the left waterline (T_C, P5, T_D)
+            ctx.beginPath();
+            ctx.moveTo(T_C.x, T_C.y);
+            ctx.lineTo(P5.x, P5.y);
+            ctx.lineTo(T_D.x, T_D.y);
+            ctx.closePath();
+            ctx.fillStyle = textureCreviceColor;
+            ctx.fill();
+
+            // 4. Highlight on the right side (P3, T_B, P4)
+            ctx.beginPath();
+            ctx.moveTo(P3.x, P3.y);
+            ctx.lineTo(T_B.x, T_B.y);
+            ctx.lineTo(P4.x, P4.y);
+            ctx.closePath();
+            ctx.fillStyle = textureHighlightColor;
+            ctx.fill();
+
+
+            // --- 5. Draw Water Line Overlay and Ripple ---
+            
+            // Subtle water reflection/ripple (drawn over the water/ice interface)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; // Semi-transparent white
+            ctx.lineWidth = 1;
+
+            // Draw several undulating lines for the ripple effect
+            for (let i = 0; i < 5; i++) {
+                const yOffset = waterLevelY + 5 + i * 3;
+                // Create dynamic wave-like offsets based on current progress
+                const startX = Math.sin(i * 0.5 + progress * 5) * 5 + W * 0.1;
+                const endX = W - (Math.cos(i * 0.5 + progress * 5) * 5 + W * 0.1);
+
+                ctx.beginPath();
+                ctx.moveTo(startX, yOffset);
+                ctx.bezierCurveTo(
+                    W * 0.3 + Math.random() * 20, yOffset + Math.sin(i + progress * 10) * 2,
+                    W * 0.7 - Math.random() * 20, yOffset - Math.cos(i + progress * 10) * 2,
+                    endX, yOffset
+                );
+                ctx.stroke();
+            }
+
+            // Crisp white line (must be last to ensure it's on top)
+            ctx.beginPath();
+            ctx.moveTo(0, waterLevelY);
+            ctx.lineTo(W, waterLevelY);
+            ctx.strokeStyle = '#ffffff'; 
             ctx.lineWidth = 4;
             ctx.stroke();
         }
